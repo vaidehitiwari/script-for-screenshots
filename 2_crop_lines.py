@@ -222,18 +222,27 @@ def process_single_image(
     target_brightness: int = 240,
     pad_y: int = 8,
     min_page_ink_ratio: float = 0.002,
-    suppress_ruled: bool = True
+    suppress_ruled: bool = True,
+    work_width: int = 2480
 ) -> Dict[str, Any]:
     img = cv2.imread(str(image_path))
     if img is None:
         return {"status": "error", "error": f"Failed to load image: {image_path}"}
 
-    h, w = img.shape[:2]
-
     if len(img.shape) == 3:
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     else:
         gray = img.copy()
+
+    # Detection thresholds are in pixels and tuned for an A4 page at 300 DPI
+    # (~2480 px wide). Resize every page to that width so a single handwritten
+    # line isn't split into several "lines" on large scans.
+    if work_width and gray.shape[1] != work_width:
+        scale = work_width / gray.shape[1]
+        interp = cv2.INTER_AREA if scale < 1 else cv2.INTER_CUBIC
+        gray = cv2.resize(gray, (work_width, round(gray.shape[0] * scale)), interpolation=interp)
+
+    h, w = gray.shape[:2]
 
     norm_gray, binary_mask = normalize_brightness_and_lighting(
         gray, target_brightness=target_brightness
@@ -310,6 +319,7 @@ def main():
     parser.add_argument("--target_brightness", type=int, default=240, help="Target paper brightness (0-255, default: 240).")
     parser.add_argument("--pad_y", type=int, default=8, help="Vertical padding around text boundaries (default: 8px).")
     parser.add_argument("--min_ink_ratio", type=float, default=0.002, help="Minimum ink density ratio to avoid blank screenshots (default: 0.002 = 0.2%%).")
+    parser.add_argument("--work_width", type=int, default=2480, help="Resize pages to this width before processing so line detection works on any scan size (default: 2480 = A4 @ 300 DPI, 0 = keep original).")
     parser.add_argument("--no_ruled_suppression", action="store_true", help="Disable notebook ruling line suppression.")
 
     args = parser.parse_args()
@@ -355,7 +365,8 @@ def main():
             target_brightness=args.target_brightness,
             pad_y=args.pad_y,
             min_page_ink_ratio=args.min_ink_ratio,
-            suppress_ruled=not args.no_ruled_suppression
+            suppress_ruled=not args.no_ruled_suppression,
+            work_width=args.work_width
         )
 
         if res["status"] == "success":

@@ -19,6 +19,7 @@ def run_pipeline(
     dpi: int = 300,
     lines_per_crop: int = 3,
     target_brightness: int = 240,
+    work_width: int = 2480,
     debug: bool = False,
     cleanup_pages: bool = False
 ) -> None:
@@ -66,7 +67,8 @@ def run_pipeline(
         "--input", str(page_images_dir),
         "--output_dir", str(line_crops_dir),
         "--lines_per_crop", str(lines_per_crop),
-        "--target_brightness", str(target_brightness)
+        "--target_brightness", str(target_brightness),
+        "--work_width", str(work_width)
     ]
     if debug_dir:
         cmd_step2.extend(["--debug_dir", str(debug_dir)])
@@ -96,6 +98,7 @@ def main():
     parser.add_argument("--dpi", type=int, default=300, help="Rendering resolution (default: 300 DPI).")
     parser.add_argument("--lines_per_crop", "-n", type=int, default=3, help="Number of text lines per crop (default: 3).")
     parser.add_argument("--target_brightness", type=int, default=240, help="Normalized target paper brightness (0-255).")
+    parser.add_argument("--work_width", type=int, default=2480, help="Resize pages to this width before cropping (default: 2480, 0 = keep original).")
     parser.add_argument("--debug", action="store_true", help="Generate debug visualization images with bounding boxes.")
     parser.add_argument("--cleanup_pages", action="store_true", help="Delete full-page images after cropping to save space.")
 
@@ -107,6 +110,7 @@ def main():
         dpi=args.dpi,
         lines_per_crop=args.lines_per_crop,
         target_brightness=args.target_brightness,
+        work_width=args.work_width,
         debug=args.debug,
         cleanup_pages=args.cleanup_pages
     )
